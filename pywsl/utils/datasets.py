@@ -3,6 +3,7 @@ from sklearn.datasets import fetch_mldata
 # from sklearn.datasets import fetch_openml
 from chainer.datasets import TupleDataset
 import pickle
+from chainer import serializers
 import pandas
 
 def load_dataset(data_id, n_p, n_n, n_u, prior, n_t, n_vp=None, n_vn=None, n_vu=None):
@@ -15,8 +16,16 @@ def load_dataset(data_id, n_p, n_n, n_u, prior, n_t, n_vp=None, n_vn=None, n_vu=
     elif data_id == 1:
         data_name = "Nichschraing_TFIDF_chars"
         prior = prior / 10
-        xtrain = pickle.load(open("./data/xtrain_tfidf_ngram_chars.obj","rb")) 
+
+        xtrain = pickle.load(open("./data/xtrain_tfidf_ngram_chars.obj","rb"))
+        xtrain_arr = np.zeros(xtrain.shape)
+        xtrain = xtrain.todense(out=xtrain_arr)
+
         xval = pickle.load(open("./data/xvalid_tfidf_ngram_chars.obj","rb"))
+        xval_arr = np.zeros(xval.shape)
+        xval = xval.todense(out=xval_arr)
+
+        xtrain, xval = xtrain_arr, xval_arr
         print("x shapes train, val", xtrain.shape, xval.shape)
 
         trainY = pickle.load(open("./data/trainY.obj", "rb"))
@@ -25,7 +34,7 @@ def load_dataset(data_id, n_p, n_n, n_u, prior, n_t, n_vp=None, n_vn=None, n_vu=
 
         #x = np.r_[xtrain, xval]
         #y = np.r_[trainY, validY]
-        x = np.append(xtrain.todense(), xval.todense(), axis=0)
+        x = np.append(xtrain, xval, axis=0)
         y = np.append(trainY, validY, axis=0)
         pos, neg = 1, -1
         y[y == 0] = neg
