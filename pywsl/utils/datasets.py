@@ -25,7 +25,7 @@ def load_dataset(data_id, n_p, n_n, n_u, prior, n_t, n_vp=None, n_vn=None, n_vu=
 
         #x = np.r_[xtrain, xval]
         #y = np.r_[trainY, validY]
-        x = np.append(xtrain.todense(), xval.todense(), axis=0)
+        x = np.append(xtrain.toarray(), xval.toarray(), axis=0)
         y = np.append(trainY, validY, axis=0)
         pos, neg = 1, -1
         y[y == 0] = neg
