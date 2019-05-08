@@ -1,5 +1,6 @@
 import six
 import copy
+import datetime
 
 try:
     from matplotlib import use
@@ -14,7 +15,10 @@ from chainer.training import extensions
 from chainer.datasets import TupleDataset
 
 import numpy as np
+import pandas
 
+import sys
+sys.path.append('.')
 from pywsl.utils.models import TLP, MLP
 from pywsl.utils.datasets import load_dataset
 from pywsl.utils.tools4chainer import pred
@@ -30,14 +34,20 @@ def main():
 
     data_id, prior = 0, .5
     n_p, n_n, n_u, n_t, n_vp, n_vn, n_vu = 100, 0, 10000, 100, 20, 20, 100
+    data_id, prior = 1, 0.06
+    n_p, n_n, n_u, n_t, n_vp, n_vn, n_vu = 250, 0, 12000, -1, 150, 1000, 2000
+    
     data_name, x_p, x_n, x_u, y_u, x_t, y_t, x_vp, x_vn, x_vu, y_vu \
         = load_dataset(data_id, n_p, n_n, n_u, prior, n_t, n_vp=n_vp, n_vn=n_vn, n_vu=n_vu)
 
     x_p, x_n, x_u, x_t, x_vp, x_vn, x_vu = x_p.astype(np.float32), x_n.astype(np.float32), \
         x_u.astype(np.float32), x_t.astype(np.float32), x_vp.astype(np.float32), \
         x_vn.astype(np.float32), x_vu.astype(np.float32), 
-    XYtrain = TupleDataset(np.r_[x_p, x_u], np.r_[np.ones(100), np.zeros(10000)].astype(np.int32))
-    XYtest = TupleDataset(np.r_[x_vp, x_vu], np.r_[np.ones(20), np.zeros(100)].astype(np.int32))
+    print("shapes x_p, x_n, x_u, x_t, x_vp, x_vn, x_vu",
+            x_p.shape, x_n.shape, x_u.shape, x_t.shape, 
+            x_vp.shape, x_vn.shape, x_vu.shape)
+    XYtrain = TupleDataset(np.r_[x_p, x_u], np.r_[np.ones(n_p), np.zeros(n_u)].astype(np.int32))
+    XYtest = TupleDataset(np.r_[x_vp, x_vu], np.r_[np.ones(n_vp), np.zeros(n_vu)].astype(np.int32))
     train_iter = chainer.iterators.SerialIterator(XYtrain, batchsize)
     test_iter = chainer.iterators.SerialIterator(XYtest, batchsize, repeat=False, shuffle=False)
 
@@ -69,10 +79,10 @@ def main():
                    trigger=chainer.training.triggers.MaxValueTrigger(key))
     if extensions.PlotReport.available():
             trainer.extend(
-                extensions.PlotReport(['main/loss', 'validation/main/loss'], 'epoch', file_name=f'loss_curve.png'))
+                extensions.PlotReport(['main/loss', 'validation/main/loss'], 'epoch', file_name='loss_curve.png'))
             trainer.extend(
                 extensions.PlotReport(['main/accuracy', 'validation/main/accuracy'], 
-                                      'epoch', file_name=f'accuracy_curve.png'))
+                                      'epoch', file_name='accuracy_curve.png'))
 
 
     trainer.run()
@@ -80,6 +90,10 @@ def main():
     yh = pred(model, x_t, batchsize, gpu)
     mr = prior*np.mean(yh[y_t == +1] <= 0) + (1-prior)*np.mean(yh[y_t == -1] >= 0)
     print("mr: {}".format(mr))
+    dt = datetime.datetime.now()
+    timestamp = '{0}-{1} {2}:{3}'.format(dt.day, dt.month, dt.hour, dt.minute)
+    serializer.save_npz('{0}_{1}.model'.format(timestamp, data_name), model)
+    print("Saved model with name", timestamp)
 
 
 if __name__ == "__main__":
